@@ -166,26 +166,25 @@ def first_end_date(start =None, end =None):
 
     #last recent
     most_recent = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
-    most_recent_date = dt.datetime.strptime(most_recent[0], '%Y-%m-%d')
+    most_recent_date = dt.datetime.strptime(most_recent[0],'%Y-%m-%d')
     first_date = most_recent_date - dt.timedelta(days=365)
-    end_date = dt.datetime.strptime(most_recent[-1],'%Y-%m-%d')
     
     #query for start date
     first_end_results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-        filter(Measurement.date >= first_date).\
-        filter(Measurement.date <= end_date).all()
+        filter(Measurement.date >= most_recent_date).\
+        filter(Measurement.date <= most_recent_date).all()
 
     #close
     session.close()
 
     #list of value to append
     first_end_date_values = []
-    for min, avg, max in first_end_date_values:
+    for min, avg, max in first_end_results:
         first_end_date_values_dict = []
         first_end_date_values_dict["min"] = min
         first_end_date_values_dict["average"] = avg
         first_end_date_values_dict["max"] = max
-        first_end_date_values.append(first_end_date_values_dict)
+        first_end_results.append(first_end_date_values_dict)
 
     #jsonify
     return jsonify(first_end_date_values)
