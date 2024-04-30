@@ -4,6 +4,7 @@ import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
+import datetime as dt
 
 from flask import Flask, jsonify
 
@@ -12,7 +13,7 @@ from flask import Flask, jsonify
 # Database Setup
 #################################################
 # Create our session (link) from Python to the DB
-engine = create_engine("sqlite:///hawaii.sqlite")
+engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -40,8 +41,8 @@ def All():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start><br/>"
-        f"/api/v1.0/<start>/<end><br/>"
+        f"/api/v1.0/start<br/>"
+        f"/api/v1.0/start/end<br/>"
     )
 #route for precipitation information
 @app.route("/api/v1.0/precipitation")
@@ -49,6 +50,11 @@ def precipitation():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
+    #most recent
+    most_recent = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    most_recent_date = dt.datetime.strptime(most_recent[0], '%Y-%m-%d')
+    first_date = most_recent_date - dt.timedelta(days=365)
+    
     #query the last 12 months of data
     sel = [Measurement.date,
            func.sum(Measurement.prcp)]
@@ -92,10 +98,15 @@ def stations():
 
 #route for tobs
 @app.route("/api/v1.0/tobs")
-def stations():
+def tobs():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
+     #most recent
+    most_recent = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    most_recent_date = dt.datetime.strptime(most_recent[0], '%Y-%m-%d')
+    first_date = most_recent_date - dt.timedelta(days=365)
+    
     # Query the dates and temps of the most active stations for the previous year.
     sel = [Measurement.date, Measurement.tobs]
     station_temps_year = session.query(*sel).\
@@ -121,37 +132,48 @@ def stations():
 
 #route for api start and api end
 @app.route("/api/v1.0/start")
-def first_date(start):
+def first_date(start =None):
     session = Session(engine)
 
+    #most recent
+    most_recent = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    most_recent_date = dt.datetime.strptime(most_recent[0], '%Y-%m-%d')
+    first_date = most_recent_date - dt.timedelta(days=365)
+    
     #query for start date
-    first_date_result = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+    start_date_values = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
         filter(Measurement.date >= first_date).all()
 
     #close
     session.close()
 
     #list of value to append
-    first_date_values = []
+    first_date_result = []
     for min, avg, max in start_date_values:
-        first_date_values_dict = []
+        first_date_values_dict = {}
         first_date_values_dict["min"] = min
         first_date_values_dict["average"] = avg
         first_date_values_dict["max"] = max
-        first_date_values.append(first_date_values_dict)
+        first_date_result.append(first_date_values_dict)
 
     #jsonify
-    return jsonify(first_date_values)
+    return jsonify(first_date_result)
 
 #route for api start and api end
 @app.route("/api/v1.0/start/end")
-def first_end_date(start):
+def first_end_date(start =None, end =None):
     session = Session(engine)
 
+    #last recent
+    most_recent = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    most_recent_date = dt.datetime.strptime(most_recent[0], '%Y-%m-%d')
+    first_date = most_recent_date - dt.timedelta(days=365)
+    end_date = dt.datetime.strptime(most_recent[-1],'%Y-%m-%d')
+    
     #query for start date
     first_end_results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
-        filter(Measurement.date >= first).\
-        filter(Measurement.date <= end).all()
+        filter(Measurement.date >= first_date).\
+        filter(Measurement.date <= end_date).all()
 
     #close
     session.close()
